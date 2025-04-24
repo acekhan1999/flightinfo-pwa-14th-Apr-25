@@ -105,7 +105,7 @@ async function syncOfflineRequests() {
     if (self.registration.showNotification) {
       self.registration.showNotification('Offline Requests Synced!', {
         body: 'All your saved flight requests were submitted.',
-        icon: '/logo192.png'
+        icon: `${BASE}/logo192.png`
       });
     }
 
