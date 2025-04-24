@@ -16,11 +16,21 @@ const urlsToCache = [
 // ----------- INSTALL ----------
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing...');
-  self.skipWaiting(); // Skip waiting to activate new SW immediately
+  self.skipWaiting();
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(async cache => {
+      for (const url of urlsToCache) {
+        try {
+          await cache.add(url);
+        } catch (err) {
+          console.warn('[SW] Failed to cache during install:', url, err);
+        }
+      }
+    })
   );
 });
+
 
 // ----------- ACTIVATE ----------
 self.addEventListener('activate', event => {
