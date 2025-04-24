@@ -1,5 +1,4 @@
-const CACHE_NAME = 'new-flightinfo-pwa-v3.2';
-
+const CACHE_NAME = 'new-flightinfo-pwa-v3.1';
 const BASE = self.location.pathname.replace(/\/[^/]*$/, '');
 
 const urlsToCache = [
@@ -17,7 +16,6 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing...');
   self.skipWaiting();
-
   event.waitUntil(
     caches.open(CACHE_NAME).then(async cache => {
       for (const url of urlsToCache) {
@@ -31,22 +29,19 @@ self.addEventListener('install', event => {
   );
 });
 
-
 // ----------- ACTIVATE ----------
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating...');
-  // self.clientsClaim(); // Take control of pages immediately
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async cache => {
-      for (const url of urlsToCache) {
-        try {
-          await cache.add(url);
-        } catch (e) {
-          console.warn('[Service Worker] Failed to cache:', url, e);
-        }
-      }
-    })
+    caches.keys().then(cacheNames =>
+      Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      )
+    )
   );
+  self.clients.claim();
 });
 
 // ----------- FETCH ----------
@@ -67,7 +62,6 @@ self.addEventListener('sync', event => {
 // ----------- SYNC FUNCTION ----------
 async function syncOfflineRequests() {
   console.log('[Service Worker] Trying to sync offline requests...');
-
   try {
     const db = await openDatabase();
     const tx = db.transaction('requests', 'readonly');
@@ -95,14 +89,14 @@ async function syncOfflineRequests() {
           deleteTx.onerror = reject;
         });
 
-        console.log('[Service Worker] Synced & deleted:', request);
+        console.log('[SW] Synced & deleted:', request);
       } catch (error) {
-        console.error('[Service Worker] Failed to sync request:', request, error);
+        console.error('[SW] Failed to sync request:', request, error);
       }
     }
 
-    // Notify user once all offline requests are synced
-    if (self.registration.showNotification) {
+    // ✅ Only show notification if permission is granted
+    if (self.registration.showNotification && Notification.permission === 'granted') {
       self.registration.showNotification('Offline Requests Synced!', {
         body: 'All your saved flight requests were submitted.',
         icon: `${BASE}/logo192.png`
@@ -111,7 +105,7 @@ async function syncOfflineRequests() {
 
     db.close();
   } catch (error) {
-    console.error('[Service Worker] Error during sync:', error);
+    console.error('[SW] Error during sync:', error);
   }
 }
 
@@ -120,6 +114,6 @@ function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('AeroDB', 2);
     request.onsuccess = e => resolve(e.target.result);
-    request.onerror = e => reject('IndexedDB open failed');
+    request.onerror = () => reject('IndexedDB open failed');
   });
 }
