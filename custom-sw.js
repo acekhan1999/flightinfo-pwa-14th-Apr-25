@@ -27,13 +27,15 @@ self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating...');
   // self.clientsClaim(); // Take control of pages immediately
   event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
-      )
-    )
+    caches.open(CACHE_NAME).then(async cache => {
+      for (const url of urlsToCache) {
+        try {
+          await cache.add(url);
+        } catch (e) {
+          console.warn('[Service Worker] Failed to cache:', url, e);
+        }
+      }
+    })
   );
 });
 
